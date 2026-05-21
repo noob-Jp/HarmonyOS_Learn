@@ -1,0 +1,15 @@
+{
+  "src": [
+    "pages/Index",
+    "pages/LifecyclePage",
+    "pages/StartModePage",
+    "pages/WantPage",
+    "pages/ContextPage",
+    "pages/AbilityStagePage",
+    "pages/ProcessThreadPage",
+    "pages/ExtensionPage",
+    "pages/ConfigPage",
+    "pages/InsightIntentPage",
+    "pages/TerminologyPage"
+  ]
+}
