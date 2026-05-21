@@ -1,5 +1,6 @@
 import { router } from '@kit.ArkUI';
-import { taskpool, ArkTSUtils } from '@kit.ArkTS';
+import { taskpool, ArkTSUtils, worker } from '@kit.ArkTS';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 
 // ============================================================
 //  进程模型 & 线程模型 & Native 子进程页
@@ -74,7 +75,9 @@ struct ProcessThreadPage {
   @State selectedSection: number = 0;
   @State asyncResult: string = '等待测试...';
   @State isTestingLock: boolean = false;
+  @State workerResult: string = '点击启动 Worker';
 
+  private myWorker: worker.ThreadWorker | null = null;
   private sections: string[] = ['进程模型', 'TaskPool', 'Worker', 'Native子进程', 'AsyncLock'];
 
   @Builder
@@ -266,6 +269,7 @@ struct ProcessThreadPage {
             .border({ width: 1, color: this.taskRunning ? '#64748B' : '#10B981' })
             .enabled(!this.taskRunning)
             .onClick(async () => {
+              hilog.info(0x0000, 'ProcessThreadPage', 'TaskPool button clicked. Starting task...');
               this.taskRunning = true;
               this.taskResult = '计算中...';
               const start = Date.now();
@@ -274,8 +278,10 @@ struct ProcessThreadPage {
                 const result = await taskpool.execute(task) as number;
                 this.elapsedMs = Date.now() - start;
                 this.taskResult = `结果: ${result.toLocaleString()}`;
+                hilog.info(0x0000, 'ProcessThreadPage', 'TaskPool task finished successfully in %{public}d ms with result %{public}d', this.elapsedMs, result);
               } catch (e) {
                 this.taskResult = `错误: ${e}`;
+                hilog.error(0x0000, 'ProcessThreadPage', 'TaskPool task failed: %{public}s', String(e));
               } finally {
                 this.taskRunning = false;
               }
@@ -340,6 +346,77 @@ struct ProcessThreadPage {
           .fontSize(10).fontColor('#0284C7').fontFamily('monospace').lineHeight(14)
       }
       .width('100%').padding(12).backgroundColor('#F8FAFC').borderRadius(8)
+      .margin({ bottom: 12 })
+
+      // Worker 交互演示
+      Column() {
+        Text('🛠️ 交互测试：启动 Worker 执行后台任务')
+          .fontSize(13).fontWeight(FontWeight.Bold).fontColor('#1E293B').margin({ bottom: 12 })
+          
+        Text(this.workerResult)
+          .fontSize(13)
+          .fontColor('#6366F1')
+          .fontWeight(FontWeight.Bold)
+          .margin({ bottom: 12 })
+          
+        Row() {
+          Button('发送任务')
+            .fontSize(12)
+            .backgroundColor('#6366F1')
+            .onClick(() => {
+              if (this.myWorker) {
+                 hilog.info(0x0000, 'ProcessThreadPage', 'Worker already running. Sending task...');
+                 this.workerResult = '正在后台计算...';
+                 this.myWorker.postMessage({ type: 'compute', value: 100000 });
+                 return;
+              }
+              hilog.info(0x0000, 'ProcessThreadPage', 'Starting Worker...');
+              this.workerResult = 'Worker 启动中...';
+              
+              try {
+                this.myWorker = new worker.ThreadWorker('entry/ets/workers/MyWorker.ets');
+                
+                this.myWorker.onmessage = (e) => {
+                  hilog.info(0x0000, 'ProcessThreadPage', 'Main thread received from Worker: %{public}s', JSON.stringify(e.data));
+                  if (e.data && e.data.type === 'result') {
+                    this.workerResult = '计算结果：' + e.data.value;
+                  } else {
+                    this.workerResult = '收到回复：' + e.data.value;
+                  }
+                };
+                
+                this.myWorker.onerror = (err) => {
+                  hilog.error(0x0000, 'ProcessThreadPage', 'Worker error: %{public}s', err.message);
+                  this.workerResult = 'Worker 发生错误: ' + err.message;
+                };
+                
+                hilog.info(0x0000, 'ProcessThreadPage', 'Posting message to Worker.');
+                this.workerResult = '正在后台计算...';
+                this.myWorker.postMessage({ type: 'compute', value: 100000 });
+                
+              } catch(e) {
+                 hilog.error(0x0000, 'ProcessThreadPage', 'Failed to create worker: %{public}s', String(e));
+                 this.workerResult = '启动失败: ' + e;
+              }
+            })
+            
+          Button('销毁 Worker')
+            .fontSize(12)
+            .backgroundColor('#EF4444')
+            .onClick(() => {
+              if (this.myWorker) {
+                hilog.info(0x0000, 'ProcessThreadPage', 'Terminating Worker...');
+                this.myWorker.terminate();
+                this.myWorker = null;
+                this.workerResult = 'Worker 已销毁';
+              } else {
+                this.workerResult = 'Worker 尚未启动';
+              }
+            })
+        }
+        .width('100%').justifyContent(FlexAlign.SpaceAround)
+      }
+      .width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(12).border({ width: 1, color: 'rgba(0,0,0,0.05)' }).margin({ bottom: 16 })
     }
     .width('100%').padding({ left: 16, right: 16 }).alignItems(HorizontalAlign.Start)
   }
@@ -409,6 +486,7 @@ struct ProcessThreadPage {
             .fontSize(12)
             .backgroundColor('#EF4444')
             .onClick(async () => {
+              hilog.info(0x0000, 'ProcessThreadPage', 'Unsafe concurrent task button clicked.');
               if (this.isTestingLock) return;
               this.isTestingLock = true;
               this.asyncResult = '无锁测试执行中...';
@@ -420,6 +498,7 @@ struct ProcessThreadPage {
               }
               await Promise.all(promises);
               this.asyncResult = '无锁执行结束：' + sharedData.count + ' (预期: 10000)';
+              hilog.info(0x0000, 'ProcessThreadPage', 'Unsafe concurrent test finished. Final count: %{public}d', sharedData.count);
               this.isTestingLock = false;
             })
 
@@ -427,6 +506,7 @@ struct ProcessThreadPage {
             .fontSize(12)
             .backgroundColor('#10B981')
             .onClick(async () => {
+              hilog.info(0x0000, 'ProcessThreadPage', 'Safe concurrent task button clicked.');
               if (this.isTestingLock) return;
               this.isTestingLock = true;
               this.asyncResult = '带锁测试执行中...';
@@ -438,6 +518,7 @@ struct ProcessThreadPage {
               }
               await Promise.all(promises);
               this.asyncResult = '带锁执行结束：' + sharedData.count + ' (精准防并发)';
+              hilog.info(0x0000, 'ProcessThreadPage', 'Safe concurrent test finished. Final count: %{public}d', sharedData.count);
               this.isTestingLock = false;
             })
         }

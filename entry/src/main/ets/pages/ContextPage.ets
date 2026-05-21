@@ -1,5 +1,6 @@
-import { router } from '@kit.ArkUI';
+import { router, promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 
 // ============================================================
 //  应用上下文 Context 页
@@ -310,7 +311,42 @@ struct ContextPage {
             this.EnvVarRow(env)
           })
         }
-        .width('100%').padding({ left: 16, right: 16, bottom: 32 })
+        .width('100%').padding({ left: 16, right: 16, bottom: 10 })
+
+        // ── 交互式功能演示 ─────────────────────────────────────
+        this.SectionTitle('🚀 功能演示 (Interactive Examples)')
+        Column() {
+          Button('显示 Toast 提示 (基于 Context 环境)')
+            .width('100%').margin({ bottom: 10 })
+            .backgroundColor('#06B6D4')
+            .onClick(() => {
+              hilog.info(0x0000, 'ContextPage', 'User clicked Show Toast button.');
+              promptAction.showToast({
+                message: `当前模块路径:\n${this.currentFilesDir}`,
+                duration: 3000
+              });
+              hilog.info(0x0000, 'ContextPage', 'Toast displayed successfully.');
+            })
+
+          Button('退出当前页面 (terminateSelf)')
+            .width('100%')
+            .backgroundColor('#EF4444')
+            .onClick(() => {
+              hilog.info(0x0000, 'ContextPage', 'User clicked terminateSelf button.');
+              const context = getContext(this) as common.UIAbilityContext;
+              context.terminateSelf().then(() => {
+                hilog.info(0x0000, 'ContextPage', 'terminateSelf executed successfully.');
+              }).catch((err: Error) => {
+                hilog.error(0x0000, 'ContextPage', 'Failed to terminate: %{public}s', err.message);
+                console.error('Failed to terminate', err);
+              });
+            })
+        }
+        .width('100%').padding(14)
+        .margin({ left: 16, right: 16, bottom: 32 })
+        .backgroundColor('#FFFFFF').borderRadius(12)
+        .border({ width: 1, color: 'rgba(0,0,0,0.05)' })
+        .alignItems(HorizontalAlign.Start)
       }
       .width('100%')
     }

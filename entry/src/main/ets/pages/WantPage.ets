@@ -1,4 +1,6 @@
 import { router } from '@kit.ArkUI';
+import { common, Want } from '@kit.AbilityKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 
 // ============================================================
 //  Want 信息传递载体页
@@ -213,6 +215,54 @@ struct WantPage {
               .fontSize(11).fontColor('#0284C7').fontFamily('monospace').lineHeight(16)
           }
           .width('100%').padding(12).backgroundColor('#F8FAFC').borderRadius(8)
+        }
+        .width('100%').padding(14)
+        .margin({ left: 16, right: 16, bottom: 10 })
+        .backgroundColor('#FFFFFF').borderRadius(12)
+        .border({ width: 1, color: 'rgba(0,0,0,0.05)' })
+        .alignItems(HorizontalAlign.Start)
+
+        // ── 交互式功能演示 ─────────────────────────────────────
+        this.SectionTitle('🚀 功能演示 (Interactive Examples)')
+        Column() {
+          Button('打开浏览器 (隐式 Want)')
+            .width('100%').margin({ bottom: 10 })
+            .backgroundColor('#EC4899')
+            .onClick(() => {
+              hilog.info(0x0000, 'WantPage', 'User clicked Open Browser (Implicit Want) button.');
+              const context = getContext(this) as common.UIAbilityContext;
+              const wantInfo: Want = {
+                action: 'ohos.want.action.viewData',
+                entities: ['entity.system.browsable'],
+                uri: 'https://developer.huawei.com/consumer/cn/'
+              };
+              hilog.info(0x0000, 'WantPage', 'Starting ability with implicit Want: %{public}s', JSON.stringify(wantInfo));
+              context.startAbility(wantInfo).then(() => {
+                hilog.info(0x0000, 'WantPage', 'Implicit Want successfully started.');
+              }).catch((err: Error) => {
+                hilog.error(0x0000, 'WantPage', 'Failed to startAbility: %{public}s', err.message);
+                console.error('Failed to startAbility', err);
+              });
+            })
+
+          Button('拉起系统设置 (显式 Want)')
+            .width('100%')
+            .backgroundColor('#6366F1')
+            .onClick(() => {
+              hilog.info(0x0000, 'WantPage', 'User clicked Open Settings (Explicit Want) button.');
+              const context = getContext(this) as common.UIAbilityContext;
+              const wantInfo: Want = {
+                bundleName: 'com.huawei.hmos.settings',
+                abilityName: 'com.huawei.hmos.settings.MainAbility'
+              };
+              hilog.info(0x0000, 'WantPage', 'Starting ability with explicit Want: %{public}s', JSON.stringify(wantInfo));
+              context.startAbility(wantInfo).then(() => {
+                hilog.info(0x0000, 'WantPage', 'Explicit Want successfully started.');
+              }).catch((err: Error) => {
+                hilog.error(0x0000, 'WantPage', 'Failed to start settings: %{public}s', err.message);
+                console.error('Failed to start settings', err);
+              });
+            })
         }
         .width('100%').padding(14)
         .margin({ left: 16, right: 16, bottom: 32 })

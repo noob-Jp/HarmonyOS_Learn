@@ -1,5 +1,6 @@
 import { router } from '@kit.ArkUI';
-
+import { common, Want } from '@kit.AbilityKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 // ============================================================
 //  启动模式 & 组件启动规则页
 //  知识点：
@@ -343,6 +344,25 @@ struct StartModePage {
           .padding(12)
           .backgroundColor('#F8FAFC')
           .borderRadius(8)
+          .margin({ bottom: 12 })
+
+          Button('启动测试 Ability')
+            .width('100%')
+            .backgroundColor('#0284C7')
+            .onClick(() => {
+              hilog.info(0x0000, 'StartModePage', 'User clicked Start Test Ability button.');
+              const context = getContext(this) as common.UIAbilityContext;
+              const wantInfo: Want = {
+                bundleName: 'com.example.myapplication',
+                abilityName: 'EntryAbility'
+              };
+              hilog.info(0x0000, 'StartModePage', 'startAbility with Want: %{public}s', JSON.stringify(wantInfo));
+              context.startAbility(wantInfo).then(() => {
+                hilog.info(0x0000, 'StartModePage', 'startAbility success.');
+              }).catch((err: Error) => {
+                hilog.error(0x0000, 'StartModePage', 'startAbility failed: %{public}s', err.message);
+              });
+            })
         }
         .width('100%')
         .padding(14)
