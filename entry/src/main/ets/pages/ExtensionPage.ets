@@ -26,8 +26,6 @@ const EXTENSION_TYPES: ExtensionType[] = [
 @Component
 struct ExtensionPage {
 
-
-
   @Builder
   PageHeader() {
     Row() {
@@ -194,14 +192,98 @@ struct ExtensionPage {
   ShareSection() {
     Scroll() {
       Column() {
-        Text('ShareExtensionAbility (分享接收)')
-          .fontSize(16).fontWeight(FontWeight.Bold).fontColor('#10B981').margin({ bottom: 12 })
 
-        Text('通过配置 type="share" 和对应的 intents，我们的应用可以出现在系统相册或浏览器的分享面板中，接收别的应用发来的文本或图片。')
-          .fontSize(13).fontColor('#64748B').lineHeight(20).margin({ bottom: 20 })
+        Text('ShareExtensionAbility')
+          .fontSize(16).fontWeight(FontWeight.Bold).fontColor('#10B981').margin({ bottom: 10 })
 
-        Button('模拟别的应用分享文本给我们')
-          .width('100%').backgroundColor('#10B981').height(44)
+        // 注意说明
+        Row() {
+          Text('ℹ️  ').fontSize(12)
+          Text('系统分享面板已弹出（✅ 成功），但需在真机安装后才能在列表中看到本 App。')
+            .fontSize(11).fontColor('#0369A1').layoutWeight(1).lineHeight(16)
+        }
+        .width('100%')
+        .padding({ top: 8, bottom: 8, left: 12, right: 12 })
+        .backgroundColor('#EFF6FF').borderRadius(8)
+        .border({ width: 1, color: '#BFDBFE' })
+        .margin({ bottom: 20 })
+
+        // 工作原理图
+        Text('工作流程').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#334155').margin({ bottom: 10 })
+
+        // 发送方
+        Column() {
+          Text('① 发送方 (任意 App)').fontSize(10).fontColor('#94A3B8').margin({ bottom: 6 })
+          Row() {
+            Column() {
+              Text('📤').fontSize(20)
+              Text('ShareController\n.show()').fontSize(8).fontColor('#6EE7B7').textAlign(TextAlign.Center).margin({ top: 4 })
+            }
+            .width('45%').height(64).backgroundColor('#064E3B').borderRadius(8)
+            .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+
+            Column() {
+              Text('→  系统 Share 服务  →').fontSize(9).fontColor('#94A3B8')
+              Text('UTD 类型匹配').fontSize(8).fontColor('#6EE7B7').margin({ top: 4 })
+            }
+            .layoutWeight(1).justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+
+            Column() {
+              Text('📋').fontSize(20)
+              Text('系统分享\n选择器').fontSize(8).fontColor('#94A3B8').textAlign(TextAlign.Center).margin({ top: 4 })
+            }
+            .width('35%').height(64).backgroundColor('#1E293B').borderRadius(8)
+            .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+          }
+          .width('100%').justifyContent(FlexAlign.SpaceBetween)
+        }
+        .width('100%').padding(12).backgroundColor('#052E16').borderRadius(12).margin({ bottom: 6 })
+
+        Text('↓  用户从列表选择我们的 App').fontSize(9).fontColor('#94A3B8').textAlign(TextAlign.Center).width('100%').margin({ bottom: 6 })
+
+        // 接收方
+        Column() {
+          Text('② 接收方 (我们的 App)').fontSize(10).fontColor('#94A3B8').margin({ bottom: 6 })
+          Row() {
+            Column() {
+              Text('📥').fontSize(20)
+              Text('ShareExtension\nAbility').fontSize(8).fontColor('#6EE7B7').textAlign(TextAlign.Center).margin({ top: 4 })
+              Text('onSessionCreate').fontSize(7).fontColor('#94A3B8').margin({ top: 3 })
+            }
+            .width('45%').height(64).backgroundColor('#064E3B').borderRadius(8)
+            .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+
+            Column() {
+              Text('→  加载专属 UI  →').fontSize(9).fontColor('#94A3B8')
+            }
+            .layoutWeight(1).justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+
+            Column() {
+              Text('🗂️').fontSize(20)
+              Text('SharePage.ets').fontSize(8).fontColor('#6EE7B7').textAlign(TextAlign.Center).margin({ top: 4 })
+            }
+            .width('35%').height(64).backgroundColor('#052E16').borderRadius(8)
+            .border({ width: 1, color: '#10B981' })
+            .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+          }
+          .width('100%').justifyContent(FlexAlign.SpaceBetween)
+        }
+        .width('100%').padding(12).backgroundColor('#F0FDF4').borderRadius(12)
+        .border({ width: 1, color: '#A7F3D0' }).margin({ bottom: 20 })
+
+        // 演示按钮区
+        Text('实战演示').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#334155').margin({ bottom: 10 })
+
+        Button('🗂️  直接查看分享接收界面')
+          .width('100%').height(46).backgroundColor('#0F766E').fontColor('#FFFFFF').fontSize(14)
+          .margin({ bottom: 10 })
+          .onClick(() => {
+            // 直接导航到 SharePage 展示接收界面长什么样
+            router.pushUrl({ url: 'pages/SharePage' });
+          })
+
+        Button('🌐  唤起系统分享面板')
+          .width('100%').height(46).backgroundColor('#10B981').fontColor('#FFFFFF').fontSize(14)
           .onClick(() => {
             const context = getContext(this) as common.UIAbilityContext;
             let sharedData = new systemShare.SharedData({
@@ -218,13 +300,28 @@ struct ExtensionPage {
             });
           })
 
-        Text('点击上方按钮，系统会弹出分享应用选择器，请在里面选择我们的应用，就能看到被拉起的专属分享界面 (SharePage.ets)！')
-          .fontSize(12).fontColor('#94A3B8').lineHeight(18).margin({ top: 16 })
-          .padding(12).backgroundColor('#F0FDF4').borderRadius(8)
+        Text('⬆  系统分享面板成功弹出即代表 ShareKit API 调用成功。在完整真机环境下，本 App 会出现在选择器中，选择后会拉起 SharePage.ets 显示接收到的内容。')
+          .fontSize(11).fontColor('#6B7280').lineHeight(17).margin({ top: 12 })
+          .padding(12).backgroundColor('#F9FAFB').borderRadius(8)
+          .border({ width: 1, color: '#E5E7EB' })
+
+        // 关键 API 卡片
+        Divider().margin({ top: 20, bottom: 14 }).color('#E2E8F0')
+        Text('关键配置要点').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#334155').margin({ bottom: 10 })
+        Column() {
+          this.FeatureRow('🏷️', 'module.json5 注册', 'type: "share" + skills.actions: "ohos.want.action.sendData"')
+          this.FeatureRow('📐', 'UTD 类型匹配', '发送方 SharedData.utd 必须与接收方 skills.uris 中的类型对应')
+          this.FeatureRow('🖼️', '专属接收 UI', 'onSessionCreate 中加载 SharePage，显示接收内容')
+          this.FeatureRow('↩️', '结果回传', 'session.terminateSelfWithResult() 将结果传回发送方')
+        }
+        .backgroundColor('#FFFFFF').borderRadius(12).padding(4)
+        .border({ width: 1, color: '#E2E8F0' })
+
       }
-      .width('100%').padding(20).alignItems(HorizontalAlign.Start)
+      .width('100%').padding(16).alignItems(HorizontalAlign.Start)
     }
   }
+
 
   build() {
     Column() {
