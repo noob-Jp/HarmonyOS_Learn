@@ -51,11 +51,45 @@
         ]
       },
       {
+        "name": "EntryFormAbility",
+        "srcEntry": "./ets/entryformability/EntryFormAbility.ets",
+        "label": "$string:EntryAbility_label",
+        "description": "提供桌面服务卡片",
+        "type": "form",
+        "exported": true,
+        "metadata": [
+          {
+            "name": "ohos.extension.form",
+            "resource": "$profile:form_config"
+          }
+        ]
+      },
+      {
         "name": "MyAppServiceExtAbility",
         "srcEntry": "./ets/appserviceextability/MyAppServiceExtAbility.ets",
         "type": "appService",
         "exported": false,
         "description": "Demonstrates backend tasks like audio, download, and syncing."
+      },
+      {
+        "name": "EntryShareAbility",
+        "srcEntry": "./ets/entryshareability/EntryShareAbility.ets",
+        "description": "接收外部应用的内容分享",
+        "type": "share",
+        "exported": true,
+        "skills": [
+          {
+            "actions": [
+              "ohos.want.action.sendData"
+            ],
+            "uris": [
+              {
+                "scheme": "file",
+                "type": "*/*"
+              }
+            ]
+          }
+        ]
       }
     ],
     "requestPermissions": [

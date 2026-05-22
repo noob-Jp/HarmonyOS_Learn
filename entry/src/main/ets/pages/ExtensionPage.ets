@@ -2,32 +2,8 @@ import { router } from '@kit.ArkUI';
 import { common, Want } from '@kit.AbilityKit';
 import { rpc } from '@kit.IPCKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-
-// ============================================================
-//  ExtensionAbility 页
-//  知识点：
-//  - ExtensionAbility 各类型（Service/AppService/Agent/EmbeddedUI/Backup等）
-//  - Call 调用实现 UIAbility 多端协同
-//  - UIAbility 备份恢复（BackupExtensionAbility）
-//  - EmbeddedUIExtensionAbility（跨进程嵌入 UI）
-// ============================================================
-
-interface ExtensionType {
-  icon: string;
-  name: string;
-  type: string;
-  color: string;
-  desc: string;
-  process: string;
-  useCase: string;
-}
-
-interface BackupFlowItem {
-  step: string;
-  title: string;
-  desc: string;
-  color: string;
-}
+import { systemShare } from '@kit.ShareKit';
+import { uniformTypeDescriptor as utd } from '@kit.ArkData';
 
 class ServiceActionItem {
   name: string;
@@ -40,86 +16,26 @@ class ServiceActionItem {
   }
 }
 
+interface ExtensionType {
+  icon: string;
+  name: string;
+  type: string;
+  color: string;
+  desc: string;
+}
+
 const EXTENSION_TYPES: ExtensionType[] = [
-  {
-    icon: '⚙️',
-    name: 'ServiceExtensionAbility',
-    type: 'service',
-    color: '#EF4444',
-    desc: '系统级后台服务，需要系统权限。可在后台常驻运行，提供进程间服务能力。',
-    process: '独立进程（Extension 进程）',
-    useCase: '系统服务、输入法、无障碍服务等'
-  },
-  {
-    icon: '🛠️',
-    name: 'AppServiceExtensionAbility',
-    type: 'appService',
-    color: '#F97316',
-    desc: '应用级后台服务（API 12+），无需系统权限。用于实现应用自身的后台常驻能力。',
-    process: '应用专属 Extension 进程',
-    useCase: '音乐后台播放、文件同步、定时任务'
-  },
-  {
-    icon: '🤖',
-    name: 'AgentExtensionAbility',
-    type: 'agent',
-    color: '#D946EF',
-    desc: '智能体服务扩展（API 15+），用于实现基于大模型的智能助手能力，可被意图框架调度。',
-    process: '应用 Extension 进程',
-    useCase: '应用内智能助手、AI 功能扩展'
-  },
-  {
-    icon: '🪟',
-    name: 'EmbeddedUIExtensionAbility',
-    type: 'embeddedUI',
-    color: '#06B6D4',
-    desc: '跨进程 UI 嵌入能力。允许一个应用将自己的 UI 界面嵌入到另一个应用的 UI 中，通过 <EmbeddedComponent> 实现。',
-    process: 'Provider 应用进程',
-    useCase: '第三方组件嵌入、跨应用 Widget'
-  },
-  {
-    icon: '💾',
-    name: 'BackupExtensionAbility',
-    type: 'backup',
-    color: '#10B981',
-    desc: '应用数据备份与恢复扩展。在系统执行备份时调用，将应用数据序列化；在恢复时反序列化还原。',
-    process: '主进程',
-    useCase: '云备份、设备迁移、数据恢复'
-  },
-  {
-    icon: '🔔',
-    name: 'StaticSubscriberExtensionAbility',
-    type: 'staticSubscriber',
-    color: '#FBBF24',
-    desc: '静态公共事件订阅，应用未启动时也能接收系统广播事件（如开机、安装等）。',
-    process: '应用进程（被唤醒）',
-    useCase: '开机自启、系统事件监听'
-  },
-  {
-    icon: '📋',
-    name: 'FormExtensionAbility',
-    type: 'form',
-    color: '#818CF8',
-    desc: '服务卡片扩展，用于实现桌面/锁屏上的小组件（ArkTS 卡片）。',
-    process: '应用 Extension 进程',
-    useCase: '桌面卡片、锁屏信息卡片'
-  },
-  {
-    icon: '🖼️',
-    name: 'PhotoEditorExtensionAbility',
-    type: 'photoEditor',
-    color: '#94A3B8',
-    desc: '图片编辑扩展（API 12+），允许第三方应用接入系统相册的编辑流程。',
-    process: '应用 Extension 进程',
-    useCase: '滤镜、图片处理应用'
-  }
+  { icon: '⚙️', name: 'ServiceExtensionAbility', type: 'service', color: '#EF4444', desc: '系统级后台服务，需要系统权限。可在后台常驻运行，提供进程间服务能力。' },
+  { icon: '🤖', name: 'AgentExtensionAbility', type: 'agent', color: '#D946EF', desc: '智能体服务扩展（API 15+），用于实现基于大模型的智能助手能力，可被意图框架调度。' },
+  { icon: '🪟', name: 'EmbeddedUIExtensionAbility', type: 'embeddedUI', color: '#06B6D4', desc: '跨进程 UI 嵌入能力。允许一个应用将自己的 UI 界面嵌入到另一个应用的 UI 中。' },
+  { icon: '💾', name: 'BackupExtensionAbility', type: 'backup', color: '#10B981', desc: '应用数据备份与恢复扩展。在系统执行备份时调用，将应用数据序列化；在恢复时反序列化还原。' },
+  { icon: '🔔', name: 'StaticSubscriberExtensionAbility', type: 'staticSubscriber', color: '#FBBF24', desc: '静态公共事件订阅，应用未启动时也能接收系统广播事件（如开机、安装等）。' },
+  { icon: '🖼️', name: 'PhotoEditorExtensionAbility', type: 'photoEditor', color: '#94A3B8', desc: '图片编辑扩展（API 12+），允许第三方应用接入系统相册的编辑流程。' }
 ];
 
 @Entry
 @Component
 struct ExtensionPage {
-  @State selectedExtension: number = 0;
-  @State showCallDemo: boolean = false;
   @State isConnected: boolean = false;
   @State serviceResponse: string = '等待操作...';
   
@@ -131,8 +47,8 @@ struct ExtensionPage {
     Row() {
       Text('←').fontSize(20).fontColor('#94A3B8').margin({ right: 12 }).onClick(() => router.back())
       Column() {
-        Text('ExtensionAbility').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#1E293B')
-        Text('特殊场景扩展 · Call调用 · 备份恢复').fontSize(11).fontColor('#64748B').margin({ top: 2 })
+        Text('ExtensionAbility 示例').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#1E293B')
+        Text('实战：后台服务 · 桌面卡片 · 分享接收').fontSize(11).fontColor('#64748B').margin({ top: 2 })
       }
       .alignItems(HorizontalAlign.Start).layoutWeight(1)
       Text('🧩').fontSize(24)
@@ -142,275 +58,218 @@ struct ExtensionPage {
   }
 
   @Builder
-  SectionTitle(text: string) {
-    Text(text)
-      .fontSize(13).fontWeight(FontWeight.Bold).fontColor('#EF4444')
-      .letterSpacing(0.5).width('100%')
-      .padding({ left: 16, right: 16, top: 16, bottom: 8 })
-  }
-
-  @Builder
-  ExtensionCard(ext: ExtensionType, index: number) {
-    Column() {
-      Row() {
-        Text(ext.icon).fontSize(24).margin({ right: 10 })
-        Column() {
-          Text(ext.name)
-            .fontSize(12).fontWeight(FontWeight.Bold).fontColor(ext.color)
-          Text(`type: "${ext.type}"`)
-            .fontSize(10).fontColor('#64748B').fontFamily('monospace').margin({ top: 2 })
-        }
-        .alignItems(HorizontalAlign.Start).layoutWeight(1)
-        Text(this.selectedExtension === index ? '▲' : '▼')
-          .fontSize(12).fontColor('#64748B')
-      }
-      .width('100%')
-
-      if (this.selectedExtension === index) {
-        Column() {
-          Text(ext.desc)
-            .fontSize(11).fontColor('#94A3B8').lineHeight(18).margin({ top: 10, bottom: 8 })
-          Row() {
-            Text('进程：').fontSize(10).fontColor('#64748B').width(50)
-            Text(ext.process).fontSize(10).fontColor('#334155').layoutWeight(1)
-          }
-          .margin({ bottom: 4 })
-          Row() {
-            Text('场景：').fontSize(10).fontColor('#64748B').width(50)
-            Text(ext.useCase).fontSize(10).fontColor(ext.color).layoutWeight(1)
-          }
-        }
-        .animation({ duration: 300, curve: Curve.EaseOut })
-      }
-    }
-    .width('100%').padding(14)
-    .backgroundColor(this.selectedExtension === index ? `${ext.color}12` : '#FFFFFF')
-    .borderRadius(12)
-    .border({ width: 1, color: this.selectedExtension === index ? `${ext.color}44` : 'rgba(0,0,0,0.05)' })
-    .alignItems(HorizontalAlign.Start)
-    .margin({ bottom: 8 })
-    .onClick(() => {
-      this.selectedExtension = this.selectedExtension === index ? -1 : index;
-    })
-  }
-
-  @Builder
-  CallSection() {
-    Column() {
-      Text('Call 调用允许调用方通过 IPC 与指定 UIAbility 实例进行通信，无需拉起该 UIAbility 的 UI 界面（常驻后台实例）。适用于多端协同、跨 Ability 数据共享。')
-        .fontSize(12).fontColor('#94A3B8').lineHeight(18).margin({ bottom: 14 })
-
-      // 被调用方配置
-      Column() {
-        Text('① 被调用方（UIAbility）实现 Callee')
-          .fontSize(12).fontWeight(FontWeight.Bold).fontColor('#FBBF24').margin({ bottom: 8 })
-        Column() {
-          Text('// UIAbility.ts\nimport { rpc } from "@kit.IPCKit";\n\nexport default class MyAbility extends UIAbility {\n  onCreate() {\n    // 注册 callee 处理函数\n    this.callee.on("MyMethod", this.callHandler);\n  }\n\n  callHandler(data: rpc.MessageSequence) {\n    // 读取调用方传来的数据\n    const msg = data.readString();\n    console.log("收到 Call 调用:", msg);\n    \n    // 返回结果\n    const result = new rpc.MessageSequence();\n    result.writeString("处理完成");\n    return result;\n  }\n}')
-            .fontSize(10).fontColor('#0284C7').fontFamily('monospace').lineHeight(14)
-        }
-        .width('100%').padding(12).backgroundColor('#F8FAFC').borderRadius(8)
-      }
-      .width('100%').padding(14)
-      .backgroundColor('rgba(251,191,36,0.07)').borderRadius(12)
-      .border({ width: 1, color: 'rgba(251,191,36,0.2)' })
-      .alignItems(HorizontalAlign.Start).margin({ bottom: 10 })
-
-      // 调用方
-      Column() {
-        Text('② 调用方（发起 Call）')
-          .fontSize(12).fontWeight(FontWeight.Bold).fontColor('#6366F1').margin({ bottom: 8 })
-        Column() {
-          Text('// 调用方 Page.ets\nconst want: Want = {\n  bundleName: "com.example.app",\n  abilityName: "MyAbility"\n};\n\n// 发起 Call 调用（不拉起UI）\nconst caller = await context.startAbilityByCall(want);\n\n// 发送数据\nconst data = new rpc.MessageSequence();\ndata.writeString("Hello from Caller");\nconst result = await caller.call("MyMethod", data);\n\n// 断开连接\ncaller.release();')
-            .fontSize(10).fontColor('#0284C7').fontFamily('monospace').lineHeight(14)
-        }
-        .width('100%').padding(12).backgroundColor('#F8FAFC').borderRadius(8)
-      }
-      .width('100%').padding(14)
-      .backgroundColor('rgba(99,102,241,0.07)').borderRadius(12)
-      .border({ width: 1, color: 'rgba(99,102,241,0.2)' })
-      .alignItems(HorizontalAlign.Start)
-    }
-    .width('100%').padding({ left: 16, right: 16 }).alignItems(HorizontalAlign.Start)
-  }
-
-  @Builder
   AppServiceSection() {
-    Column() {
-      Text('AppServiceExtensionAbility 提供了独立于 UI 的应用级后台服务，常用于音乐播放、后台下载、数据同步等场景。')
-        .fontSize(12).fontColor('#94A3B8').lineHeight(18).margin({ bottom: 8 })
+    Scroll() {
+      Column() {
+        Text('AppServiceExtensionAbility 提供了独立于 UI 的应用级后台服务进程。')
+          .fontSize(12).fontColor('#94A3B8').lineHeight(18).margin({ bottom: 8 })
 
-      Text('⚠️ 注意：标准真机/模拟器可能因缺乏特权而报错 801 (Capability not supported)。普通第三方应用推荐使用“长时任务(Continuous Task)”。')
-        .fontSize(11).fontColor('#EF4444').lineHeight(16).margin({ bottom: 14 })
-        .backgroundColor('#FEF2F2').padding(8).borderRadius(6)
+        Text('⚠️ 注意：标准真机/模拟器可能因缺乏特权而报错 801 (Capability not supported)。普通第三方应用推荐使用“长时任务(Continuous Task)”。')
+          .fontSize(11).fontColor('#EF4444').lineHeight(16).margin({ bottom: 14 })
+          .backgroundColor('#FEF2F2').padding(8).borderRadius(6)
 
-      Text('服务反馈: ' + this.serviceResponse)
-        .fontSize(12)
-        .fontColor(this.isConnected ? '#10B981' : '#FBBF24')
-        .fontWeight(FontWeight.Bold)
-        .margin({ bottom: 12 })
-        
-      Row() {
-        Button(this.isConnected ? '断开后台服务' : '绑定后台服务 (Connect)')
+        Text('服务反馈: ' + this.serviceResponse)
           .fontSize(12)
-          .backgroundColor(this.isConnected ? '#EF4444' : '#10B981')
-          .onClick(() => {
-            const context = getContext(this) as common.UIAbilityContext;
-            if (this.isConnected) {
-              hilog.info(0x0000, 'ExtensionPage', 'Disconnecting service...');
-              context.disconnectAppServiceExtensionAbility(this.connectionId).then(() => {
-                this.isConnected = false;
-                this.serviceProxy = null;
-                this.serviceResponse = '已断开服务';
-              }).catch((e: Error) => {
-                hilog.error(0x0000, 'ExtensionPage', `Disconnect failed: ${e.message}`);
-              });
-            } else {
-              this.serviceResponse = '正在连接...';
-              const want: Want = {
-                bundleName: 'com.example.myapplication2',
-                moduleName: 'entry',
-                abilityName: 'MyAppServiceExtAbility'
-              };
-              const options: common.ConnectOptions = {
-                onConnect: (elementName, remote) => {
-                  hilog.info(0x0000, 'ExtensionPage', 'onConnect success');
-                  this.isConnected = true;
-                  this.serviceProxy = remote;
-                  this.serviceResponse = '服务连接成功!';
-                },
-                onDisconnect: (elementName) => {
-                  hilog.info(0x0000, 'ExtensionPage', 'onDisconnect triggered');
+          .fontColor(this.isConnected ? '#10B981' : '#FBBF24')
+          .fontWeight(FontWeight.Bold)
+          .margin({ bottom: 12 })
+          
+        Row() {
+          Button(this.isConnected ? '断开后台服务' : '绑定后台服务 (Connect)')
+            .fontSize(12)
+            .backgroundColor(this.isConnected ? '#EF4444' : '#10B981')
+            .onClick(() => {
+              const context = getContext(this) as common.UIAbilityContext;
+              if (this.isConnected) {
+                hilog.info(0x0000, 'ExtensionPage', 'Disconnecting service...');
+                context.disconnectAppServiceExtensionAbility(this.connectionId).then(() => {
                   this.isConnected = false;
                   this.serviceProxy = null;
-                  this.serviceResponse = '服务已自动断开';
-                },
-                onFailed: (code) => {
-                  hilog.error(0x0000, 'ExtensionPage', `onFailed code: ${code}`);
-                  this.serviceResponse = '连接失败，错误码: ' + code;
-                }
-              };
-              this.connectionId = context.connectAppServiceExtensionAbility(want, options);
-            }
-          })
-      }
-      .width('100%').margin({ bottom: 14 })
-      
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
-        ForEach([
-          new ServiceActionItem('🎵 播放音乐', 1, '#8B5CF6'),
-          new ServiceActionItem('⬇️ 后台下载', 2, '#3B82F6'),
-          new ServiceActionItem('🔄 数据同步', 3, '#10B981'),
-          new ServiceActionItem('📊 获取全局状态', 4, '#F59E0B')
-        ], (item: ServiceActionItem) => {
-          Button(item.name)
-            .fontSize(11)
-            .width('48%')
-            .margin({ bottom: 8 })
-            .backgroundColor(item.color)
-            .enabled(this.isConnected)
-            .onClick(async () => {
-              if (!this.serviceProxy) return;
-              try {
-                this.serviceResponse = '请求中...';
-                let data = new rpc.MessageSequence();
-                let reply = new rpc.MessageSequence();
-                let option = new rpc.MessageOption();
-                
-                await this.serviceProxy.sendMessageRequest(item.code as number, data, reply, option);
-                this.serviceResponse = reply.readString();
-              } catch (e) {
-                hilog.error(0x0000, 'ExtensionPage', `RPC call failed: ${String(e)}`);
-                this.serviceResponse = '请求失败: ' + String(e);
+                  this.serviceResponse = '已断开服务';
+                });
+              } else {
+                this.serviceResponse = '正在连接...';
+                const want: Want = {
+                  bundleName: 'com.example.myapplication2',
+                  moduleName: 'entry',
+                  abilityName: 'MyAppServiceExtAbility'
+                };
+                const options: common.ConnectOptions = {
+                  onConnect: (elementName, remote) => {
+                    this.isConnected = true;
+                    this.serviceProxy = remote;
+                    this.serviceResponse = '服务连接成功!';
+                  },
+                  onDisconnect: () => {
+                    this.isConnected = false;
+                    this.serviceResponse = '服务已自动断开';
+                  },
+                  onFailed: (code) => {
+                    this.serviceResponse = '连接失败，错误码: ' + code;
+                  }
+                };
+                this.connectionId = context.connectAppServiceExtensionAbility(want, options);
               }
             })
-        })
+        }
+        .width('100%').margin({ bottom: 14 })
+        
+        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
+          ForEach([
+            new ServiceActionItem('🎵 播放音乐', 1, '#8B5CF6'),
+            new ServiceActionItem('⬇️ 后台下载', 2, '#3B82F6'),
+            new ServiceActionItem('🔄 数据同步', 3, '#10B981'),
+            new ServiceActionItem('📊 获取全局状态', 4, '#F59E0B')
+          ], (item: ServiceActionItem) => {
+            Button(item.name)
+              .fontSize(11).width('48%').margin({ bottom: 8 })
+              .backgroundColor(item.color)
+              .enabled(this.isConnected)
+              .onClick(async () => {
+                if (!this.serviceProxy) return;
+                try {
+                  this.serviceResponse = '请求中...';
+                  let data = new rpc.MessageSequence();
+                  let reply = new rpc.MessageSequence();
+                  let option = new rpc.MessageOption();
+                  await this.serviceProxy.sendMessageRequest(item.code, data, reply, option);
+                  this.serviceResponse = reply.readString();
+                } catch (e) {
+                  this.serviceResponse = '请求失败: ' + String(e);
+                }
+              })
+          })
+        }
+        .width('100%')
       }
-      .width('100%')
+      .width('100%').padding(20)
     }
-    .width('100%').padding(14)
-    .backgroundColor('#FFFFFF').borderRadius(12)
-    .border({ width: 1, color: 'rgba(0,0,0,0.05)' })
-    .alignItems(HorizontalAlign.Start).margin({ bottom: 14 })
   }
 
   @Builder
-  BackupSection() {
-    Column() {
-      Text('BackupExtensionAbility 使应用能够参与系统级数据备份流程，保证应用数据在设备迁移、重置、恢复出厂设置时的完整性。')
-        .fontSize(12).fontColor('#94A3B8').lineHeight(18).margin({ bottom: 14 })
-
-      // 流程图
+  FormSection() {
+    Scroll() {
       Column() {
-        Text('备份/恢复流程')
-          .fontSize(12).fontWeight(FontWeight.Bold).fontColor('#334155').margin({ bottom: 10 })
+        Text('FormExtensionAbility (服务卡片)')
+          .fontSize(16).fontWeight(FontWeight.Bold).fontColor('#818CF8').margin({ bottom: 12 })
 
-        ForEach([
-          { step: '1', title: '系统触发备份', desc: '云端同步 / 设备迁移 / 手动备份', color: '#10B981' },
-          { step: '2', title: '调用 onBackup()', desc: '将应用数据写入备份目录（el2/backup）', color: '#6366F1' },
-          { step: '3', title: '系统压缩上传', desc: '备份数据加密上传至华为云', color: '#F59E0B' },
-          { step: '4', title: '恢复时调用 onRestore()', desc: '从备份目录读取数据，还原应用状态', color: '#EC4899' },
-        ], (item: BackupFlowItem) => {
-          Row() {
-            Column() {
-              Text(item.step)
-                .fontSize(14).fontWeight(FontWeight.Bold).fontColor('#F4F6F9')
-            }
-            .width(28).height(28).borderRadius(14)
-            .backgroundColor(item.color)
-            .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-            .margin({ right: 12 })
+        Text('服务卡片允许应用将重要信息（如天气、待办）直接展示在系统桌面或锁屏上，属于高度独立的 Extension 进程。')
+          .fontSize(13).fontColor('#64748B').lineHeight(20).margin({ bottom: 20 })
 
-            Column() {
-              Text(item.title).fontSize(12).fontWeight(FontWeight.Bold).fontColor(item.color)
-              Text(item.desc).fontSize(10).fontColor('#64748B').margin({ top: 2 })
-            }
-            .alignItems(HorizontalAlign.Start).layoutWeight(1)
-          }
-          .margin({ bottom: 10 })
-        })
+        Image($r('sys.media.ohos_app_icon')) // 占位图
+          .width(80).height(80).borderRadius(16).margin({ bottom: 16 })
+
+        Text('如何体验我们刚刚添加的卡片？')
+          .fontSize(14).fontWeight(FontWeight.Bold).fontColor('#334155').margin({ bottom: 12 })
+
+        Column() {
+          Text('1. 编译并安装本应用到模拟器/真机。')
+            .fontSize(12).fontColor('#475569').margin({ bottom: 8 })
+          Text('2. 回到系统桌面 (Home键)。')
+            .fontSize(12).fontColor('#475569').margin({ bottom: 8 })
+          Text('3. 找到本应用的图标，长按图标。')
+            .fontSize(12).fontColor('#475569').margin({ bottom: 8 })
+          Text('4. 在弹出的菜单中选择「服务卡片」')
+            .fontSize(12).fontColor('#475569').margin({ bottom: 8 })
+          Text('5. 点击「添加到桌面」，即可看到我们在代码里写的 WidgetCard 界面啦！')
+            .fontSize(12).fontColor('#475569').margin({ bottom: 8 })
+        }
+        .width('100%').alignItems(HorizontalAlign.Start)
+        .padding(16).backgroundColor('#F8FAFC').borderRadius(12)
+        
       }
-      .width('100%').padding(14)
-      .backgroundColor('#FFFFFF').borderRadius(12)
-      .border({ width: 1, color: 'rgba(0,0,0,0.05)' })
-      .alignItems(HorizontalAlign.Start).margin({ bottom: 14 })
-
-      Column() {
-        Text('export default class MyBackupAbility extends BackupExtensionAbility {\n  async onBackup() {\n    // 将数据复制到备份目录\n    const srcPath = this.context.filesDir + "/user_data.db";\n    const dstPath = this.context.backupDir + "/user_data.db";\n    await fs.copyFile(srcPath, dstPath);\n  }\n\n  async onRestore(bundleVersion: BundleVersion) {\n    // 从备份目录恢复数据\n    const srcPath = this.context.backupDir + "/user_data.db";\n    const dstPath = this.context.filesDir + "/user_data.db";\n    await fs.copyFile(srcPath, dstPath);\n  }\n}')
-          .fontSize(10).fontColor('#0284C7').fontFamily('monospace').lineHeight(14)
-      }
-      .width('100%').padding(12).backgroundColor('#F8FAFC').borderRadius(8)
+      .width('100%').padding(20).alignItems(HorizontalAlign.Start)
     }
-    .width('100%').padding({ left: 16, right: 16, bottom: 32 }).alignItems(HorizontalAlign.Start)
+  }
+
+  @Builder
+  ShareSection() {
+    Scroll() {
+      Column() {
+        Text('ShareExtensionAbility (分享接收)')
+          .fontSize(16).fontWeight(FontWeight.Bold).fontColor('#10B981').margin({ bottom: 12 })
+
+        Text('通过配置 type="share" 和对应的 intents，我们的应用可以出现在系统相册或浏览器的分享面板中，接收别的应用发来的文本或图片。')
+          .fontSize(13).fontColor('#64748B').lineHeight(20).margin({ bottom: 20 })
+
+        Button('模拟别的应用分享文本给我们')
+          .width('100%').backgroundColor('#10B981').height(44)
+          .onClick(() => {
+            const context = getContext(this) as common.UIAbilityContext;
+            let sharedData = new systemShare.SharedData({
+              utd: utd.UniformDataType.IMAGE,
+              uri: 'file://docs/storage/Users/currentUser/mock_image.jpg',
+              content: '这是一个模拟分享的图片文件'
+            });
+            let controller = new systemShare.ShareController(sharedData);
+            controller.show(context, {
+              previewMode: systemShare.SharePreviewMode.DETAIL,
+              selectionMode: systemShare.SelectionMode.SINGLE
+            }).catch((err: Error) => {
+              hilog.error(0x0000, 'ExtensionPage', `Share failed: ${err.message}`);
+            });
+          })
+
+        Text('点击上方按钮，系统会弹出分享应用选择器，请在里面选择我们的应用，就能看到被拉起的专属分享界面 (SharePage.ets)！')
+          .fontSize(12).fontColor('#94A3B8').lineHeight(18).margin({ top: 16 })
+          .padding(12).backgroundColor('#F0FDF4').borderRadius(8)
+      }
+      .width('100%').padding(20).alignItems(HorizontalAlign.Start)
+    }
   }
 
   build() {
-    Scroll() {
-      Column() {
-        this.PageHeader()
+    Column() {
+      this.PageHeader()
 
-        // ── ExtensionAbility 类型 ─────────────────────────────
-        this.SectionTitle('🧩 ExtensionAbility 全类型（点击展开）')
-        Column() {
-          ForEach(EXTENSION_TYPES, (ext: ExtensionType, index: number) => {
-            this.ExtensionCard(ext, index)
-          })
-        }
-        .width('100%').padding({ left: 16, right: 16 })
+      Tabs({ barPosition: BarPosition.Start }) {
+        TabContent() {
+          this.AppServiceSection()
+        }.tabBar('后台服务')
 
-        // ── AppService 后台任务交互 ──────────────────────────────────
-        this.SectionTitle('🛠️ 交互测试：AppService 后台服务')
-        this.AppServiceSection()
+        TabContent() {
+          this.FormSection()
+        }.tabBar('桌面卡片')
 
-        // ── Call 调用 ────────────────────────────────────────
-        this.SectionTitle('📞 Call 调用实现多端协同')
-        this.CallSection()
+        TabContent() {
+          this.ShareSection()
+        }.tabBar('分享接收')
 
-        // ── 备份恢复 ─────────────────────────────────────────
-        this.SectionTitle('💾 UIAbility 备份恢复（BackupExtensionAbility）')
-        this.BackupSection()
+        TabContent() {
+          this.OthersSection()
+        }.tabBar('其他扩展')
       }
-      .width('100%')
+      .width('100%').layoutWeight(1)
+      .barMode(BarMode.Scrollable)
+      .animationDuration(300)
     }
     .width('100%').height('100%').backgroundColor('#F4F6F9')
+  }
+
+  @Builder
+  OthersSection() {
+    Scroll() {
+      Column() {
+        Text('除了我们前面演示的 AppService、Form、Share 之外，HarmonyOS 还提供了以下几种场景化的扩展：')
+          .fontSize(12).fontColor('#64748B').lineHeight(18).margin({ bottom: 16 })
+
+        ForEach(EXTENSION_TYPES, (ext: ExtensionType) => {
+          Row() {
+            Text(ext.icon).fontSize(24).margin({ right: 12 })
+            Column() {
+              Text(ext.name)
+                .fontSize(13).fontWeight(FontWeight.Bold).fontColor(ext.color)
+              Text(`type: "${ext.type}"`)
+                .fontSize(10).fontColor('#94A3B8').fontFamily('monospace').margin({ top: 2, bottom: 4 })
+              Text(ext.desc)
+                .fontSize(11).fontColor('#64748B').lineHeight(16)
+            }
+            .alignItems(HorizontalAlign.Start).layoutWeight(1)
+          }
+          .width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(12).margin({ bottom: 10 })
+        })
+      }
+      .width('100%').padding(16).alignItems(HorizontalAlign.Start)
+    }
   }
 }
