@@ -116,8 +116,19 @@ const NAV_CARDS: NavCard[] = [
     color: '#0EA5E9',
     route: 'pages/TerminologyPage',
     topics: ['Ability', 'UIAbility', 'ExtensionAbility', 'HAP', 'HAR', 'HSP', 'Bundle', 'Want']
+  },
+  {
+    id: 'continuoustask',
+    icon: '⏳',
+    title: '后台长时任务',
+    subtitle: '标准第三方后台保活',
+    tag: '新增',
+    color: '#F43F5E',
+    route: 'pages/ContinuousTaskPage',
+    topics: ['ContinuousTask', 'backgroundTaskManager', '保持后台运行', '模拟下载']
   }
 ];
+
 
 @Entry
 @Component

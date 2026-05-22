@@ -10,6 +10,7 @@
     "pages/ExtensionPage",
     "pages/ConfigPage",
     "pages/InsightIntentPage",
-    "pages/TerminologyPage"
+    "pages/TerminologyPage",
+    "pages/ContinuousTaskPage"
   ]
 }

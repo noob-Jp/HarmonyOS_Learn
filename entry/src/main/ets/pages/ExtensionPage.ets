@@ -1,4 +1,7 @@
 import { router } from '@kit.ArkUI';
+import { common, Want } from '@kit.AbilityKit';
+import { rpc } from '@kit.IPCKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 
 // ============================================================
 //  ExtensionAbility 页
@@ -24,6 +27,17 @@ interface BackupFlowItem {
   title: string;
   desc: string;
   color: string;
+}
+
+class ServiceActionItem {
+  name: string;
+  code: number;
+  color: string;
+  constructor(name: string, code: number, color: string) {
+    this.name = name;
+    this.code = code;
+    this.color = color;
+  }
 }
 
 const EXTENSION_TYPES: ExtensionType[] = [
@@ -106,6 +120,11 @@ const EXTENSION_TYPES: ExtensionType[] = [
 struct ExtensionPage {
   @State selectedExtension: number = 0;
   @State showCallDemo: boolean = false;
+  @State isConnected: boolean = false;
+  @State serviceResponse: string = '等待操作...';
+  
+  private connectionId: number = -1;
+  private serviceProxy: rpc.IRemoteObject | null = null;
 
   @Builder
   PageHeader() {
@@ -215,6 +234,106 @@ struct ExtensionPage {
   }
 
   @Builder
+  AppServiceSection() {
+    Column() {
+      Text('AppServiceExtensionAbility 提供了独立于 UI 的应用级后台服务，常用于音乐播放、后台下载、数据同步等场景。')
+        .fontSize(12).fontColor('#94A3B8').lineHeight(18).margin({ bottom: 8 })
+
+      Text('⚠️ 注意：标准真机/模拟器可能因缺乏特权而报错 801 (Capability not supported)。普通第三方应用推荐使用“长时任务(Continuous Task)”。')
+        .fontSize(11).fontColor('#EF4444').lineHeight(16).margin({ bottom: 14 })
+        .backgroundColor('#FEF2F2').padding(8).borderRadius(6)
+
+      Text('服务反馈: ' + this.serviceResponse)
+        .fontSize(12)
+        .fontColor(this.isConnected ? '#10B981' : '#FBBF24')
+        .fontWeight(FontWeight.Bold)
+        .margin({ bottom: 12 })
+        
+      Row() {
+        Button(this.isConnected ? '断开后台服务' : '绑定后台服务 (Connect)')
+          .fontSize(12)
+          .backgroundColor(this.isConnected ? '#EF4444' : '#10B981')
+          .onClick(() => {
+            const context = getContext(this) as common.UIAbilityContext;
+            if (this.isConnected) {
+              hilog.info(0x0000, 'ExtensionPage', 'Disconnecting service...');
+              context.disconnectAppServiceExtensionAbility(this.connectionId).then(() => {
+                this.isConnected = false;
+                this.serviceProxy = null;
+                this.serviceResponse = '已断开服务';
+              }).catch((e: Error) => {
+                hilog.error(0x0000, 'ExtensionPage', `Disconnect failed: ${e.message}`);
+              });
+            } else {
+              this.serviceResponse = '正在连接...';
+              const want: Want = {
+                bundleName: 'com.example.myapplication2',
+                moduleName: 'entry',
+                abilityName: 'MyAppServiceExtAbility'
+              };
+              const options: common.ConnectOptions = {
+                onConnect: (elementName, remote) => {
+                  hilog.info(0x0000, 'ExtensionPage', 'onConnect success');
+                  this.isConnected = true;
+                  this.serviceProxy = remote;
+                  this.serviceResponse = '服务连接成功!';
+                },
+                onDisconnect: (elementName) => {
+                  hilog.info(0x0000, 'ExtensionPage', 'onDisconnect triggered');
+                  this.isConnected = false;
+                  this.serviceProxy = null;
+                  this.serviceResponse = '服务已自动断开';
+                },
+                onFailed: (code) => {
+                  hilog.error(0x0000, 'ExtensionPage', `onFailed code: ${code}`);
+                  this.serviceResponse = '连接失败，错误码: ' + code;
+                }
+              };
+              this.connectionId = context.connectAppServiceExtensionAbility(want, options);
+            }
+          })
+      }
+      .width('100%').margin({ bottom: 14 })
+      
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
+        ForEach([
+          new ServiceActionItem('🎵 播放音乐', 1, '#8B5CF6'),
+          new ServiceActionItem('⬇️ 后台下载', 2, '#3B82F6'),
+          new ServiceActionItem('🔄 数据同步', 3, '#10B981'),
+          new ServiceActionItem('📊 获取全局状态', 4, '#F59E0B')
+        ], (item: ServiceActionItem) => {
+          Button(item.name)
+            .fontSize(11)
+            .width('48%')
+            .margin({ bottom: 8 })
+            .backgroundColor(item.color)
+            .enabled(this.isConnected)
+            .onClick(async () => {
+              if (!this.serviceProxy) return;
+              try {
+                this.serviceResponse = '请求中...';
+                let data = new rpc.MessageSequence();
+                let reply = new rpc.MessageSequence();
+                let option = new rpc.MessageOption();
+                
+                await this.serviceProxy.sendMessageRequest(item.code as number, data, reply, option);
+                this.serviceResponse = reply.readString();
+              } catch (e) {
+                hilog.error(0x0000, 'ExtensionPage', `RPC call failed: ${String(e)}`);
+                this.serviceResponse = '请求失败: ' + String(e);
+              }
+            })
+        })
+      }
+      .width('100%')
+    }
+    .width('100%').padding(14)
+    .backgroundColor('#FFFFFF').borderRadius(12)
+    .border({ width: 1, color: 'rgba(0,0,0,0.05)' })
+    .alignItems(HorizontalAlign.Start).margin({ bottom: 14 })
+  }
+
+  @Builder
   BackupSection() {
     Column() {
       Text('BackupExtensionAbility 使应用能够参与系统级数据备份流程，保证应用数据在设备迁移、重置、恢复出厂设置时的完整性。')
@@ -277,6 +396,10 @@ struct ExtensionPage {
           })
         }
         .width('100%').padding({ left: 16, right: 16 })
+
+        // ── AppService 后台任务交互 ──────────────────────────────────
+        this.SectionTitle('🛠️ 交互测试：AppService 后台服务')
+        this.AppServiceSection()
 
         // ── Call 调用 ────────────────────────────────────────
         this.SectionTitle('📞 Call 调用实现多端协同')

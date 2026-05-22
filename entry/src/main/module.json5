@@ -22,6 +22,9 @@
         "startWindowBackground": "$color:start_window_background",
         "exported": true,
         "launchType": "singleton",
+        "backgroundModes": [
+          "dataTransfer"
+        ],
         "skills": [
           {
             "entities": [
@@ -45,7 +48,26 @@
             "name": "ohos.extension.backup",
             "resource": "$profile:backup_config"
           }
-        ],
+        ]
+      },
+      {
+        "name": "MyAppServiceExtAbility",
+        "srcEntry": "./ets/appserviceextability/MyAppServiceExtAbility.ets",
+        "type": "appService",
+        "exported": false,
+        "description": "Demonstrates backend tasks like audio, download, and syncing."
+      }
+    ],
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.KEEP_BACKGROUND_RUNNING",
+        "reason": "$string:module_desc",
+        "usedScene": {
+          "abilities": [
+            "EntryAbility"
+          ],
+          "when": "inuse"
+        }
       }
     ]
   }
