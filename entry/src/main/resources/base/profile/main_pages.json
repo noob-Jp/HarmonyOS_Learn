@@ -13,6 +13,7 @@
     "pages/TerminologyPage",
     "pages/ContinuousTaskPage",
     "pages/SharePage",
-    "pages/EmbeddedPage"
+    "pages/EmbeddedPage",
+    "pages/ArkTSPage"
   ]
 }

@@ -126,6 +126,16 @@ const NAV_CARDS: NavCard[] = [
     color: '#F43F5E',
     route: 'pages/ContinuousTaskPage',
     topics: ['ContinuousTask', 'backgroundTaskManager', '保持后台运行', '模拟下载']
+  },
+  {
+    id: 'arkts',
+    icon: '⚡',
+    title: 'ArkTS 类库 & 并发',
+    subtitle: '标准库使用 · TaskPool · Worker · AsyncLock',
+    tag: '新增',
+    color: '#6366F1',
+    route: 'pages/ArkTSPage',
+    topics: ['collections', 'AsyncLock', 'TaskPool', 'Worker', 'TextEncoder', 'URL解析', '浮点精度']
   }
 ];
 
