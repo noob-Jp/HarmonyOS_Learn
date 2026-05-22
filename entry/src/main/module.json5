@@ -90,6 +90,13 @@
             ]
           }
         ]
+      },
+      {
+        "name": "EntryEmbeddedAbility",
+        "srcEntry": "./ets/entryembeddedability/EntryEmbeddedAbility.ets",
+        "description": "提供安全的跨进程支付控件UI",
+        "type": "embeddedUI",
+        "exported": true
       }
     ],
     "requestPermissions": [

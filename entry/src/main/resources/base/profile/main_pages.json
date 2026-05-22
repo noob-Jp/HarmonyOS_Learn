@@ -12,6 +12,7 @@
     "pages/InsightIntentPage",
     "pages/TerminologyPage",
     "pages/ContinuousTaskPage",
-    "pages/SharePage"
+    "pages/SharePage",
+    "pages/EmbeddedPage"
   ]
 }

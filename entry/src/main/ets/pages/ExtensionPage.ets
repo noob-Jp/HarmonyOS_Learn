@@ -1,20 +1,9 @@
 import { router } from '@kit.ArkUI';
 import { common, Want } from '@kit.AbilityKit';
-import { rpc } from '@kit.IPCKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { systemShare } from '@kit.ShareKit';
 import { uniformTypeDescriptor as utd } from '@kit.ArkData';
 
-class ServiceActionItem {
-  name: string;
-  code: number;
-  color: string;
-  constructor(name: string, code: number, color: string) {
-    this.name = name;
-    this.code = code;
-    this.color = color;
-  }
-}
 
 interface ExtensionType {
   icon: string;
@@ -36,11 +25,8 @@ const EXTENSION_TYPES: ExtensionType[] = [
 @Entry
 @Component
 struct ExtensionPage {
-  @State isConnected: boolean = false;
-  @State serviceResponse: string = '等待操作...';
-  
-  private connectionId: number = -1;
-  private serviceProxy: rpc.IRemoteObject | null = null;
+
+
 
   @Builder
   PageHeader() {
@@ -61,89 +47,111 @@ struct ExtensionPage {
   AppServiceSection() {
     Scroll() {
       Column() {
-        Text('AppServiceExtensionAbility 提供了独立于 UI 的应用级后台服务进程。')
-          .fontSize(12).fontColor('#94A3B8').lineHeight(18).margin({ bottom: 8 })
 
-        Text('⚠️ 注意：标准真机/模拟器可能因缺乏特权而报错 801 (Capability not supported)。普通第三方应用推荐使用“长时任务(Continuous Task)”。')
-          .fontSize(11).fontColor('#EF4444').lineHeight(16).margin({ bottom: 14 })
-          .backgroundColor('#FEF2F2').padding(8).borderRadius(6)
+        Text('AppServiceExtensionAbility')
+          .fontSize(16).fontWeight(FontWeight.Bold).fontColor('#F97316').margin({ bottom: 10 })
 
-        Text('服务反馈: ' + this.serviceResponse)
-          .fontSize(12)
-          .fontColor(this.isConnected ? '#10B981' : '#FBBF24')
-          .fontWeight(FontWeight.Bold)
-          .margin({ bottom: 12 })
-          
+        // 限制说明
         Row() {
-          Button(this.isConnected ? '断开后台服务' : '绑定后台服务 (Connect)')
-            .fontSize(12)
-            .backgroundColor(this.isConnected ? '#EF4444' : '#10B981')
-            .onClick(() => {
-              const context = getContext(this) as common.UIAbilityContext;
-              if (this.isConnected) {
-                hilog.info(0x0000, 'ExtensionPage', 'Disconnecting service...');
-                context.disconnectAppServiceExtensionAbility(this.connectionId).then(() => {
-                  this.isConnected = false;
-                  this.serviceProxy = null;
-                  this.serviceResponse = '已断开服务';
-                });
-              } else {
-                this.serviceResponse = '正在连接...';
-                const want: Want = {
-                  bundleName: 'com.example.myapplication2',
-                  moduleName: 'entry',
-                  abilityName: 'MyAppServiceExtAbility'
-                };
-                const options: common.ConnectOptions = {
-                  onConnect: (elementName, remote) => {
-                    this.isConnected = true;
-                    this.serviceProxy = remote;
-                    this.serviceResponse = '服务连接成功!';
-                  },
-                  onDisconnect: () => {
-                    this.isConnected = false;
-                    this.serviceResponse = '服务已自动断开';
-                  },
-                  onFailed: (code) => {
-                    this.serviceResponse = '连接失败，错误码: ' + code;
-                  }
-                };
-                this.connectionId = context.connectAppServiceExtensionAbility(want, options);
-              }
-            })
-        }
-        .width('100%').margin({ bottom: 14 })
-        
-        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
-          ForEach([
-            new ServiceActionItem('🎵 播放音乐', 1, '#8B5CF6'),
-            new ServiceActionItem('⬇️ 后台下载', 2, '#3B82F6'),
-            new ServiceActionItem('🔄 数据同步', 3, '#10B981'),
-            new ServiceActionItem('📊 获取全局状态', 4, '#F59E0B')
-          ], (item: ServiceActionItem) => {
-            Button(item.name)
-              .fontSize(11).width('48%').margin({ bottom: 8 })
-              .backgroundColor(item.color)
-              .enabled(this.isConnected)
-              .onClick(async () => {
-                if (!this.serviceProxy) return;
-                try {
-                  this.serviceResponse = '请求中...';
-                  let data = new rpc.MessageSequence();
-                  let reply = new rpc.MessageSequence();
-                  let option = new rpc.MessageOption();
-                  await this.serviceProxy.sendMessageRequest(item.code, data, reply, option);
-                  this.serviceResponse = reply.readString();
-                } catch (e) {
-                  this.serviceResponse = '请求失败: ' + String(e);
-                }
-              })
-          })
+          Text('🚫  ').fontSize(12)
+          Text('需要系统级签名，普通三方应用不可使用（报错 801 Capability not supported）')
+            .fontSize(11).fontColor('#D97706').layoutWeight(1).lineHeight(16)
         }
         .width('100%')
+        .padding({ top: 8, bottom: 8, left: 12, right: 12 })
+        .backgroundColor('#FFFBEB').borderRadius(8)
+        .border({ width: 1, color: '#FDE68A' })
+        .margin({ bottom: 20 })
+
+        // vs 对比卡片
+        Text('与 长时任务 (ContinuousTask) 的对比')
+          .fontSize(13).fontWeight(FontWeight.Bold).fontColor('#334155').margin({ bottom: 10 })
+
+        Row() {
+          // AppService 列
+          Column() {
+            Text('AppService\nExtensionAbility').fontSize(11).fontWeight(FontWeight.Bold).fontColor('#F97316').textAlign(TextAlign.Center).margin({ bottom: 8 })
+            Column() {
+              this.CompareRow('权限', '系统级签名')
+              this.CompareRow('进程', '独立服务进程')
+              this.CompareRow('绑定', 'IPC 远程调用')
+              this.CompareRow('适用', '系统应用')
+            }
+          }
+          .layoutWeight(1).padding(12)
+          .backgroundColor('#FFF7ED').borderRadius(10)
+          .border({ width: 1.5, color: '#FB923C' })
+          .margin({ right: 8 })
+
+          // ContinuousTask 列
+          Column() {
+            Text('ContinuousTask\n长时任务').fontSize(11).fontWeight(FontWeight.Bold).fontColor('#10B981').textAlign(TextAlign.Center).margin({ bottom: 8 })
+            Column() {
+              this.CompareRow('权限', '普通应用权限')
+              this.CompareRow('进程', '主进程后台')
+              this.CompareRow('绑定', 'API 直接调用')
+              this.CompareRow('适用', '普通应用 ✅')
+            }
+          }
+          .layoutWeight(1).padding(12)
+          .backgroundColor('#F0FDF4').borderRadius(10)
+          .border({ width: 1.5, color: '#34D399' })
+        }
+        .width('100%').margin({ bottom: 20 })
+
+        // 工作原理图
+        Text('AppServiceExtensionAbility 工作原理')
+          .fontSize(13).fontWeight(FontWeight.Bold).fontColor('#334155').margin({ bottom: 10 })
+
+        Column() {
+          Row() {
+            Column() {
+              Text('📱').fontSize(20)
+              Text('客户端 App').fontSize(9).fontColor('#94A3B8').margin({ top: 2 })
+            }
+            .width('28%').padding(10).backgroundColor('#1E293B').borderRadius(8)
+            .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+
+            Column() {
+              Text('connectAppService\nExtensionAbility()').fontSize(7).fontColor('#38BDF8').textAlign(TextAlign.Center)
+              Text('→  IPC 远程调用  →').fontSize(8).fontColor('#94A3B8').margin({ top: 4 })
+            }
+            .layoutWeight(1).justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+
+            Column() {
+              Text('⚙️').fontSize(20)
+              Text('服务进程').fontSize(9).fontColor('#94A3B8').margin({ top: 2 })
+            }
+            .width('28%').padding(10).backgroundColor('#1C1917').borderRadius(8)
+            .border({ width: 1, color: '#F97316' })
+            .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+          }
+          .width('100%').justifyContent(FlexAlign.SpaceBetween)
+        }
+        .width('100%').padding(12).backgroundColor('#0F172A').borderRadius(12).margin({ bottom: 20 })
+
+        // 场景卡片
+        Text('应用场景').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#334155').margin({ bottom: 10 })
+        Column() {
+          this.FeatureRow('🔊', '音乐播放服务', '系统级音乐 App 的后台播放控制。')
+          this.FeatureRow('📱', '设备管理', 'MDM 企业设备管理、安全监控。')
+          this.FeatureRow('🧪', '应用内测试替代', '普通应用推荐用长时任务 (ContinuousTask)实现同样的后台能力。')
+        }
+        .backgroundColor('#FFFFFF').borderRadius(12).padding(4)
+        .border({ width: 1, color: '#E2E8F0' })
+
       }
-      .width('100%').padding(20)
+      .width('100%').padding(16).alignItems(HorizontalAlign.Start)
     }
+  }
+
+  @Builder
+  CompareRow(label: string, value: string) {
+    Row() {
+      Text(label).fontSize(10).fontColor('#94A3B8').width(36)
+      Text(value).fontSize(10).fontColor('#1E293B').layoutWeight(1)
+    }
+    .width('100%').margin({ bottom: 6 })
   }
 
   @Builder
@@ -236,6 +244,10 @@ struct ExtensionPage {
         }.tabBar('分享接收')
 
         TabContent() {
+          this.EmbeddedUISection()
+        }.tabBar('嵌入式 UI')
+
+        TabContent() {
           this.OthersSection()
         }.tabBar('其他扩展')
       }
@@ -244,6 +256,101 @@ struct ExtensionPage {
       .animationDuration(300)
     }
     .width('100%').height('100%').backgroundColor('#F4F6F9')
+  }
+
+
+  @Builder
+  EmbeddedUISection() {
+    Scroll() {
+      Column() {
+        Text('EmbeddedUIExtensionAbility')
+          .fontSize(16).fontWeight(FontWeight.Bold).fontColor('#06B6D4').margin({ bottom: 10 })
+
+        // 设备支持提示
+        Row() {
+          Text('⚠️  ').fontSize(12)
+          Text('仅支持折叠屏 / 平板 / 2-in-1 设备，手机及模拟器不可用')
+            .fontSize(11).fontColor('#D97706').layoutWeight(1).lineHeight(16)
+        }
+        .width('100%')
+        .padding({ top: 8, bottom: 8, left: 12, right: 12 })
+        .backgroundColor('#FFFBEB').borderRadius(8)
+        .border({ width: 1, color: '#FDE68A' })
+        .margin({ bottom: 20 })
+
+        // 原理图：宿主进程
+        Text('工作原理').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#334155').margin({ bottom: 10 })
+
+        Column() {
+          Text('宿主进程 (Host App UIAbility)').fontSize(9).fontColor('#94A3B8').margin({ bottom: 8 })
+          Row() {
+            Column() {
+              Text('普通 UI').fontSize(10).fontColor('#E2E8F0')
+              Text('正常渲染').fontSize(8).fontColor('#94A3B8').margin({ top: 2 })
+            }
+            .width('45%').height(60).backgroundColor('#334155').borderRadius(8)
+            .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+
+            Column() {
+              Text('🔲').fontSize(20)
+              Text('<EmbeddedComponent>').fontSize(7).fontColor('#38BDF8').margin({ top: 2 })
+            }
+            .width('45%').height(60)
+            .border({ width: 2, color: '#38BDF8', style: BorderStyle.Dashed })
+            .borderRadius(8).justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+            .backgroundColor('#0F172A')
+          }
+          .width('100%').justifyContent(FlexAlign.SpaceBetween)
+        }
+        .width('100%').padding(12).backgroundColor('#1E293B').borderRadius(12).margin({ bottom: 6 })
+
+        Text('↕  跨进程图形缓冲区合成  /  terminateSelfWithResult() 传回结果')
+          .fontSize(9).fontColor('#94A3B8').textAlign(TextAlign.Center).width('100%').margin({ bottom: 6 })
+
+        // 原理图：提供方进程
+        Column() {
+          Text('提供方独立沙箱进程 (EmbeddedUIExtensionAbility)').fontSize(9).fontColor('#94A3B8').margin({ bottom: 8 })
+          Column() {
+            Text('🔒').fontSize(26)
+            Text('安全控件（如支付键盘）').fontSize(10).fontColor('#67E8F9').margin({ top: 4 })
+            Text('崩溃 → 不影响宿主').fontSize(9).fontColor('#94A3B8').margin({ top: 3 })
+          }
+          .width('100%').height(80).backgroundColor('#042424').borderRadius(10)
+          .border({ width: 1, color: '#06B6D4' })
+          .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+        }
+        .width('100%').padding(12).backgroundColor('#F0FDFF').borderRadius(12)
+        .border({ width: 1, color: '#A5F3FC' }).margin({ bottom: 20 })
+
+        // 特性卡片
+        Text('核心价值').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#334155').margin({ bottom: 10 })
+        Column() {
+          this.FeatureRow('🛡️', '进程安全隔离', '密码/数据对宿主完全不可见，防止恶意窃取。')
+          this.FeatureRow('💥', '崩溃隔离', '嵌入组件崩溃不会导致主 App 闪退。')
+          this.FeatureRow('🎨', '视觉无缝融合', '用户感知不到两个进程的边界。')
+          this.FeatureRow('📍', '典型场景', '第三方支付面板、高德地图、文档编辑器插件。')
+        }
+        .backgroundColor('#FFFFFF').borderRadius(12).padding(4)
+        .border({ width: 1, color: '#E2E8F0' })
+
+      }
+      .width('100%').padding(16).alignItems(HorizontalAlign.Start)
+    }
+  }
+
+  @Builder
+  FeatureRow(icon: string, title: string, desc: string) {
+    Row() {
+      Text(icon).fontSize(16).margin({ right: 10 })
+      Column() {
+        Text(title).fontSize(12).fontWeight(FontWeight.Bold).fontColor('#1E293B')
+        Text(desc).fontSize(11).fontColor('#64748B').lineHeight(16).margin({ top: 2 })
+      }
+      .alignItems(HorizontalAlign.Start).layoutWeight(1)
+    }
+    .width('100%').padding({ top: 10, bottom: 10, left: 12, right: 12 })
+    .border({ width: 0.5, color: '#F1F5F9' })
+    .alignItems(VerticalAlign.Top)
   }
 
   @Builder
